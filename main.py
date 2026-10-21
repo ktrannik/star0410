@@ -4,18 +4,18 @@ import random
 import json
 import os
 from datetime import datetime, timedelta, timezone
-from telethon import TelegramClient
+from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import ImportChatInviteRequest
 
 # ==========================================
-# НАСТРОЙКИ
+# НАСТРОЙКИ (БЕРУТСЯ ИЗ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ)
 # ==========================================
-API_ID = os.getenv("API_ID") 
-API_HASH = os.getenv("API_HASH") 
-SESSION_STRING = os.getenv("SESSION_STRING") 
-MY_USER_ID = os.getenv("MY_USER_ID") 
+API_ID = int(os.getenv("API_ID", 0))
+API_HASH = os.getenv("API_HASH", "")
+SESSION_STRING = os.getenv("SESSION_STRING", "")
+MY_USER_ID = int(os.getenv("MY_USER_ID", 0))
 
 # === ЕЖЕДНЕВКА: ВРЕМЯ ИЗ ПЕРЕМЕННОЙ ОКРУЖЕНИЯ ===
 DAILY_TIME = os.getenv("DAILY_TIME", "12:55")  # формат ЧЧ:ММ
@@ -102,7 +102,6 @@ async def auto_daily():
     MSK = timezone(timedelta(hours=3))
     bot_name = "@patrickstarsrobot"
     
-    # Парсим время из переменной
     try:
         daily_hour, daily_minute = map(int, DAILY_TIME.split(':'))
     except Exception:
@@ -256,7 +255,6 @@ async def auto_parse_and_activate():
     channel = "@patrickstarsfarm"
     while True:
         try:
-            # ПЕРВАЯ ПРОВЕРКА
             now = datetime.now(MSK)
             target1 = now.replace(hour=15, minute=30, second=0, microsecond=0)
             if now > target1:
@@ -275,17 +273,14 @@ async def auto_parse_and_activate():
                     async for msg in client.iter_messages(channel, limit=15):
                         msg_date = msg.date.astimezone(MSK)
                         content = msg.text or msg.caption or ''
-                        if not content:
-                            continue
-                        if msg_date.date() != today:
-                            continue
+                        if not content: continue
+                        if msg_date.date() != today: continue
                         match = re.search(r':\s*([a-zA-Z][a-zA-Z0-9\-_]+)(?=\s|$)', content)
                         if match:
                             promo_found = match.group(1)
                             print(f"   ✅ Найдено промо: {promo_found}")
                             break
-                    if promo_found:
-                        break
+                    if promo_found: break
                     await asyncio.sleep(10)
                 except Exception as e:
                     print(f"   ⚠️ Ошибка: {e}")
@@ -311,7 +306,7 @@ async def auto_parse_and_activate():
                     print(f"   ❌ Ошибка активации: {e}")
             else:
                 print(f"❌ Промо не найден (первая проверка, попыток: {attempt})")
-            # ВТОРАЯ ПРОВЕРКА
+            
             now = datetime.now(MSK)
             target2 = now.replace(hour=16, minute=30, second=0, microsecond=0)
             if now > target2:
@@ -329,17 +324,14 @@ async def auto_parse_and_activate():
                     async for msg in client.iter_messages(channel, limit=15):
                         msg_date = msg.date.astimezone(MSK)
                         content = msg.text or msg.caption or ''
-                        if not content:
-                            continue
-                        if msg_date.date() != today:
-                            continue
+                        if not content: continue
+                        if msg_date.date() != today: continue
                         match = re.search(r':\s*([a-zA-Z][a-zA-Z0-9\-_]+)(?=\s|$)', content)
                         if match:
                             promo_found = match.group(1)
                             print(f"   ✅ Найдено промо: {promo_found}")
                             break
-                    if promo_found:
-                        break
+                    if promo_found: break
                     await asyncio.sleep(10)
                 except Exception as e:
                     print(f"   ⚠️ Ошибка: {e}")
@@ -405,8 +397,7 @@ async def execute_tasks_once(bot_name, current_success, max_success):
                                 invite_url = button.url
                                 current_msg_id = msg.id
                                 break
-                    if invite_url:
-                        break
+                    if invite_url: break
             if not invite_url:
                 failed_attempts += 1
                 print(f"   ⚠️ Ссылка не читается ({failed_attempts}/5)")
@@ -414,8 +405,7 @@ async def execute_tasks_once(bot_name, current_success, max_success):
                 await asyncio.sleep(2)
                 await click_button(bot_name, "Пропустить")
                 await asyncio.sleep(3)
-                if failed_attempts >= 5:
-                    break
+                if failed_attempts >= 5: break
                 continue
             if current_msg_id in processed_messages:
                 await asyncio.sleep(1)
@@ -447,8 +437,7 @@ async def execute_tasks_once(bot_name, current_success, max_success):
             if not clicked_subscribe:
                 failed_attempts += 1
                 print(f"   ⚠️ Кнопка не найдена ({failed_attempts}/5)")
-                if failed_attempts >= 5:
-                    break
+                if failed_attempts >= 5: break
                 await asyncio.sleep(1)
                 continue
             await asyncio.sleep(3)
@@ -458,12 +447,10 @@ async def execute_tasks_once(bot_name, current_success, max_success):
                 if '?start=' in invite_url or '&start=' in invite_url or '?startgroup=' in invite_url:
                     bot_username = None
                     match = re.search(r't\.me/([a-zA-Z0-9_]+)', invite_url)
-                    if match:
-                        bot_username = match.group(1)
+                    if match: bot_username = match.group(1)
                     if not bot_username:
                         match = re.search(r'domain=([a-zA-Z0-9_]+)', invite_url)
-                        if match:
-                            bot_username = match.group(1)
+                        if match: bot_username = match.group(1)
                     if not bot_username:
                         print(f"   ⚠️ Не удалось извлечь имя бота из {invite_url}")
                         await client.send_message(bot_name, "/start")
@@ -471,14 +458,10 @@ async def execute_tasks_once(bot_name, current_success, max_success):
                         await click_button(bot_name, "Пропустить")
                         await asyncio.sleep(3)
                         continue
-                    if '?startgroup=' in invite_url:
-                        start_param = invite_url.split('?startgroup=')[-1].split('&')[0]
-                    elif '?start=' in invite_url:
-                        start_param = invite_url.split('?start=')[-1].split('&')[0]
-                    elif '&start=' in invite_url:
-                        start_param = invite_url.split('&start=')[-1].split('&')[0]
-                    else:
-                        start_param = ""
+                    if '?startgroup=' in invite_url: start_param = invite_url.split('?startgroup=')[-1].split('&')[0]
+                    elif '?start=' in invite_url: start_param = invite_url.split('?start=')[-1].split('&')[0]
+                    elif '&start=' in invite_url: start_param = invite_url.split('&start=')[-1].split('&')[0]
+                    else: start_param = ""
                     print(f"   🤖 Отправляю /start {start_param} боту @{bot_username}")
                     await client.send_message(bot_username, f"/start {start_param}")
                     await asyncio.sleep(3)
@@ -488,8 +471,7 @@ async def execute_tasks_once(bot_name, current_success, max_success):
                     await asyncio.sleep(random.randint(4, 7))
                 elif '/joinchat/' in invite_url or '/+' in invite_url:
                     invite_hash = invite_url.split('/')[-1]
-                    if invite_hash.startswith('+'):
-                        invite_hash = invite_hash[1:]
+                    if invite_hash.startswith('+'): invite_hash = invite_hash[1:]
                     invite_hash = invite_hash.split('?')[0]
                     print(f"   📢 Подписка на приватный канал")
                     try:
@@ -516,8 +498,7 @@ async def execute_tasks_once(bot_name, current_success, max_success):
                     await asyncio.sleep(random.randint(4, 7))
                 else:
                     channel_username = invite_url.split('/')[-1]
-                    if '/' in channel_username:
-                        channel_username = channel_username.split('/')[0]
+                    if '/' in channel_username: channel_username = channel_username.split('/')[0]
                     channel_username = channel_username.split('?')[0]
                     channel_username = channel_username.lstrip('@')
                     if not channel_username:
@@ -569,8 +550,7 @@ async def execute_tasks_once(bot_name, current_success, max_success):
                     clicked = True
                     print(f"   ✅ Нажата кнопка: {btn_text}")
                     break
-            if not clicked:
-                print(f"   ⚠️ Кнопка проверки не найдена")
+            if not clicked: print(f"   ⚠️ Кнопка проверки не найдена")
             await asyncio.sleep(3)
             task_done = False
             async for msg in client.iter_messages(bot_name, limit=5):
@@ -610,8 +590,7 @@ async def execute_tasks_manual(bot_name):
         await client.send_message('me', "📨 Отправляю /start...")
         await client.send_message(bot_name, "/start")
         await asyncio.sleep(3)
-        if await solve_emoji_captcha(bot_name):
-            await client.send_message('me', "🎯 Эмодзи-капча решена")
+        if await solve_emoji_captcha(bot_name): await client.send_message('me', "🎯 Эмодзи-капча решена")
         await asyncio.sleep(1)
         await client.send_message('me', "🔍 Ищу кнопку 'Задания'...")
         if not await click_button(bot_name, "Задания"):
@@ -619,8 +598,7 @@ async def execute_tasks_manual(bot_name):
             return
         await client.send_message('me', "✅ Кнопка 'Задания' нажата")
         await asyncio.sleep(3)
-        if await solve_emoji_captcha(bot_name):
-            await client.send_message('me', "🎯 Эмодзи-капча решена")
+        if await solve_emoji_captcha(bot_name): await client.send_message('me', "🎯 Эмодзи-капча решена")
         await asyncio.sleep(1)
         while total_attempts < max_attempts:
             total_attempts += 1
@@ -635,8 +613,7 @@ async def execute_tasks_manual(bot_name):
                                 invite_url = button.url
                                 current_msg_id = msg.id
                                 break
-                    if invite_url:
-                        break
+                    if invite_url: break
             if not invite_url:
                 failed_attempts += 1
                 await client.send_message('me', f"⚠️ Ссылка не читается ({failed_attempts}/5)")
@@ -679,8 +656,7 @@ async def execute_tasks_manual(bot_name):
             if not clicked_subscribe:
                 failed_attempts += 1
                 await client.send_message('me', f"⚠️ Кнопка не найдена ({failed_attempts}/5)")
-                if failed_attempts >= 5:
-                    break
+                if failed_attempts >= 5: break
                 await asyncio.sleep(1)
                 continue
             await asyncio.sleep(3)
@@ -691,12 +667,10 @@ async def execute_tasks_manual(bot_name):
                 if '?start=' in invite_url or '&start=' in invite_url or '?startgroup=' in invite_url:
                     bot_username = None
                     match = re.search(r't\.me/([a-zA-Z0-9_]+)', invite_url)
-                    if match:
-                        bot_username = match.group(1)
+                    if match: bot_username = match.group(1)
                     if not bot_username:
                         match = re.search(r'domain=([a-zA-Z0-9_]+)', invite_url)
-                        if match:
-                            bot_username = match.group(1)
+                        if match: bot_username = match.group(1)
                     if not bot_username:
                         await client.send_message('me', f"⚠️ Не удалось извлечь имя бота")
                         await client.send_message(bot_name, "/start")
@@ -704,14 +678,10 @@ async def execute_tasks_manual(bot_name):
                         await click_button(bot_name, "Пропустить")
                         await asyncio.sleep(3)
                         continue
-                    if '?startgroup=' in invite_url:
-                        start_param = invite_url.split('?startgroup=')[-1].split('&')[0]
-                    elif '?start=' in invite_url:
-                        start_param = invite_url.split('?start=')[-1].split('&')[0]
-                    elif '&start=' in invite_url:
-                        start_param = invite_url.split('&start=')[-1].split('&')[0]
-                    else:
-                        start_param = ""
+                    if '?startgroup=' in invite_url: start_param = invite_url.split('?startgroup=')[-1].split('&')[0]
+                    elif '?start=' in invite_url: start_param = invite_url.split('?start=')[-1].split('&')[0]
+                    elif '&start=' in invite_url: start_param = invite_url.split('&start=')[-1].split('&')[0]
+                    else: start_param = ""
                     await client.send_message('me', f"🤖 Отправляю /start {start_param} боту @{bot_username}")
                     await client.send_message(bot_username, f"/start {start_param}")
                     await asyncio.sleep(3)
@@ -721,8 +691,7 @@ async def execute_tasks_manual(bot_name):
                     await asyncio.sleep(random.randint(4, 7))
                 elif '/joinchat/' in invite_url or '/+' in invite_url:
                     invite_hash = invite_url.split('/')[-1]
-                    if invite_hash.startswith('+'):
-                        invite_hash = invite_hash[1:]
+                    if invite_hash.startswith('+'): invite_hash = invite_hash[1:]
                     invite_hash = invite_hash.split('?')[0]
                     await client.send_message('me', f"📢 Подписка на приватный канал")
                     try:
@@ -749,8 +718,7 @@ async def execute_tasks_manual(bot_name):
                     await asyncio.sleep(random.randint(4, 7))
                 else:
                     channel_username = invite_url.split('/')[-1]
-                    if '/' in channel_username:
-                        channel_username = channel_username.split('/')[0]
+                    if '/' in channel_username: channel_username = channel_username.split('/')[0]
                     channel_username = channel_username.split('?')[0]
                     channel_username = channel_username.lstrip('@')
                     if not channel_username:
@@ -803,8 +771,7 @@ async def execute_tasks_manual(bot_name):
                     clicked = True
                     await client.send_message('me', f"✅ Нажата кнопка: {btn_text}")
                     break
-            if not clicked:
-                await client.send_message('me', "⚠️ Кнопка проверки не найдена")
+            if not clicked: await client.send_message('me', "⚠️ Кнопка проверки не найдена")
             await asyncio.sleep(3)
             task_done = False
             async for msg in client.iter_messages(bot_name, limit=5):
@@ -876,109 +843,104 @@ async def auto_tasks_scheduler():
         random_seconds = random.randint(0, 59)
         run_time_with_delay = next_run + timedelta(minutes=random_minutes, seconds=random_seconds)
         delay = (run_time_with_delay - now).total_seconds()
-        if delay < 0:
-            delay += timedelta(days=1).total_seconds()
+        if delay < 0: delay += timedelta(days=1).total_seconds()
         print("📋 ВСЕ ВРЕМЕНА:")
         for run_time, bot in next_runs:
             print(f"   {bot}: {run_time.strftime('%d.%m %H:%M:%S')}")
         print(f"🕐 СЕЙЧАС: {now.strftime('%d.%m %H:%M:%S')}")
         print(f"⏳ Следующий запуск для {next_bot}: {run_time_with_delay.strftime('%H:%M:%S')} (счётчик: {global_success_count}/{MAX_DAILY_SUCCESS})")
         await asyncio.sleep(delay)
-        if global_success_count >= MAX_DAILY_SUCCESS:
-            continue
+        if global_success_count >= MAX_DAILY_SUCCESS: continue
         new_count = await execute_tasks_once(next_bot, global_success_count, MAX_DAILY_SUCCESS)
         if new_count > global_success_count:
             global_success_count = new_count
             save_counter(global_success_count)
 
-# === ОСНОВНАЯ ФУНКЦИЯ С ПУЛИНГОМ ===
+# === ОБРАБОТЧИК КОМАНД (ВМЕСТО ПУЛИНГА) ===
+@client.on(events.NewMessage(outgoing=True, pattern=r'^\.'))
+async def command_handler(event):
+    if event.sender_id != MY_USER_ID:
+        return
+    
+    text = event.raw_text.strip()
+    print(f"📩 Обрабатываю команду: {text}")
+    chat_id = event.chat_id
+    
+    if text.startswith('.subscribe'):
+        parts = text.split(maxsplit=1)
+        if len(parts) < 2:
+            await event.reply("⚠️ Формат: .subscribe @bot_name")
+        else:
+            bot_name = parts[1].strip()
+            await event.reply(f"🚀 Запускаю ручное выполнение заданий для {bot_name}...")
+            asyncio.create_task(execute_tasks_manual(bot_name))
+            
+    elif text.startswith('.daily'):
+        parts = text.split(maxsplit=1)
+        if len(parts) < 2:
+            await event.reply("⚠️ Формат: .daily @bot_name [2026-08-15 20:00]")
+        else:
+            match = re.match(r'(@\w+|-?\d+)\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})', parts[1])
+            if match:
+                bot_name = match.group(1)
+                date_str = match.group(2)
+                target_time = match.group(3)
+                MSK = timezone(timedelta(hours=3))
+                now = datetime.now(MSK)
+                hours, minutes = map(int, target_time.split(':'))
+                try:
+                    scheduled_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                    scheduled_time = datetime.combine(scheduled_date, datetime.min.time()).replace(hour=hours, minute=minutes, second=0, microsecond=0, tzinfo=MSK)
+                except ValueError:
+                    await event.reply("⚠️ Неверный формат даты. Используй ГГГГ-ММ-ДД")
+                    return
+                if scheduled_time < now:
+                    await event.reply(f"⚠️ Указанное время уже прошло: {date_str} {target_time}")
+                    return
+                delay = (scheduled_time - now).total_seconds()
+                await event.reply(f"⏳ Ежедневка для {bot_name} запланирована на {scheduled_time.strftime('%d.%m.%Y в %H:%M')} по Москве")
+                asyncio.create_task(schedule_daily(bot_name, chat_id, delay))
+            else:
+                bot_name = parts[1]
+                daily_buttons = ["Забрать", "Получить", "Ежедневка", "Забрать награду", "Claim", "Daily", "Получить награду"]
+                clicked = False
+                for btn in daily_buttons:
+                    if await click_button(bot_name, btn):
+                        clicked = True
+                        break
+                if not clicked:
+                    await event.reply("   ❌ Не найдена кнопка для ежедневки")
+                else:
+                    await asyncio.sleep(3)
+                    async for msg in client.iter_messages(bot_name, limit=10):
+                        if msg.text and ('+' in msg.text or '-' in msg.text or '×' in msg.text or '÷' in msg.text):
+                            match_expr = re.search(r'(\d+)\s*([+\-×÷])\s*(\d+)\s*[=？?]', msg.text)
+                            if match_expr:
+                                num1 = int(match_expr.group(1))
+                                operator = match_expr.group(2)
+                                num2 = int(match_expr.group(3))
+                                if operator == '+': answer = num1 + num2
+                                elif operator == '-': answer = num1 - num2
+                                elif operator == '×': answer = num1 * num2
+                                elif operator == '÷': answer = num1 / num2; answer = round(answer) if isinstance(answer, float) else answer
+                                await click_button(bot_name, str(answer))
+                                break
+
+# === ОСНОВНАЯ ФУНКЦИЯ ===
 async def main():
     print("🚀 Запуск юзербота...")
     await client.start()
     print("✅ Клиент запущен!")
     await client.send_message('me', '✅ Бот запущен и готов к работе!')
+    
     asyncio.create_task(auto_parse_and_activate())
     asyncio.create_task(auto_daily())
     asyncio.create_task(auto_tasks_scheduler())
-    processed = {}
-    print("🔄 Перехожу в режим пулинга...")
-    while True:
-        try:
-            async for dialog in client.iter_dialogs():
-                chat_id = dialog.id
-                if dialog.is_channel or dialog.is_group:
-                    continue
-                async for msg in client.iter_messages(chat_id, limit=1):
-                    if msg.id in processed.get(chat_id, []):
-                        break
-                    if chat_id not in processed:
-                        processed[chat_id] = []
-                    processed[chat_id].append(msg.id)
-                    if msg.sender_id == MY_USER_ID and msg.text and msg.text.startswith('.'):
-                        text = msg.text.strip()
-                        print(f"📩 Обрабатываю: {text}")
-                        if text.startswith('.subscribe'):
-                            parts = text.split(maxsplit=1)
-                            if len(parts) < 2:
-                                await client.send_message(chat_id, "⚠️ Формат: .subscribe @bot_name")
-                            else:
-                                bot_name = parts[1].strip()
-                                await client.send_message(chat_id, f"🚀 Запускаю ручное выполнение заданий для {bot_name}...")
-                                asyncio.create_task(execute_tasks_manual(bot_name))
-                        elif text.startswith('.daily'):
-                            parts = text.split(maxsplit=1)
-                            if len(parts) < 2:
-                                await client.send_message(chat_id, "⚠️ Формат: .daily @bot_name [2026-08-15 20:00]")
-                            else:
-                                match = re.match(r'(@\w+|-?\d+)\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})', parts[1])
-                                if match:
-                                    bot_name = match.group(1)
-                                    date_str = match.group(2)
-                                    target_time = match.group(3)
-                                    MSK = timezone(timedelta(hours=3))
-                                    now = datetime.now(MSK)
-                                    hours, minutes = map(int, target_time.split(':'))
-                                    try:
-                                        scheduled_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-                                        scheduled_time = datetime.combine(scheduled_date, datetime.min.time()).replace(hour=hours, minute=minutes, second=0, microsecond=0, tzinfo=MSK)
-                                    except ValueError:
-                                        await client.send_message(chat_id, "⚠️ Неверный формат даты. Используй ГГГГ-ММ-ДД")
-                                        return
-                                    if scheduled_time < now:
-                                        await client.send_message(chat_id, f"⚠️ Указанное время уже прошло: {date_str} {target_time}")
-                                        return
-                                    delay = (scheduled_time - now).total_seconds()
-                                    await client.send_message(chat_id, f"⏳ Ежедневка для {bot_name} запланирована на {scheduled_time.strftime('%d.%m.%Y в %H:%M')} по Москве")
-                                    asyncio.create_task(schedule_daily(bot_name, chat_id, delay))
-                                else:
-                                    bot_name = parts[1]
-                                    daily_buttons = ["Забрать", "Получить", "Ежедневка", "Забрать награду", "Claim", "Daily", "Получить награду"]
-                                    clicked = False
-                                    for btn in daily_buttons:
-                                        if await click_button(bot_name, btn):
-                                            clicked = True
-                                            break
-                                    if not clicked:
-                                        await client.send_message(chat_id, "   ❌ Не найдена кнопка для ежедневки")
-                                    else:
-                                        await asyncio.sleep(3)
-                                        async for msg in client.iter_messages(bot_name, limit=10):
-                                            if msg.text and ('+' in msg.text or '-' in msg.text or '×' in msg.text or '÷' in msg.text):
-                                                match_expr = re.search(r'(\d+)\s*([+\-×÷])\s*(\d+)\s*[=？?]', msg.text)
-                                                if match_expr:
-                                                    num1 = int(match_expr.group(1))
-                                                    operator = match_expr.group(2)
-                                                    num2 = int(match_expr.group(3))
-                                                    if operator == '+': answer = num1 + num2
-                                                    elif operator == '-': answer = num1 - num2
-                                                    elif operator == '×': answer = num1 * num2
-                                                    elif operator == '÷': answer = num1 / num2; answer = round(answer) if isinstance(answer, float) else answer
-                                                    await click_button(bot_name, str(answer))
-                                                    break
-            await asyncio.sleep(3)
-        except Exception as e:
-            print(f"⚠️ Ошибка: {e}")
-            await asyncio.sleep(10)
+    
+    print("🔄 Перехожу в режим ожидания команд...")
+    
+    # Просто держим бота включенным. Обработчик @client.on сделает всё сам.
+    await client.run_until_disconnected()
 
 if __name__ == "__main__":
     try:
